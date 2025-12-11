@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="bn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>আবদুর রহিম একাডেমি অব ক্রিয়েশন</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1,
+        h2 {
+            text-align: center;
+            color: #007bff;
+        }
+
+        form {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background: #e9ecef;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 95%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px 15px;
+            margin-top: 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            color: white;
+        }
+
+        #save-button {
+            background-color: #28a745;
+        }
+
+        #save-button:hover {
+            background-color: #218838;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .edit-btn {
+            background-color: #ffc107;
+            color: #333;
+            margin-right: 5px;
+        }
+
+        .delete-btn {
+            background-color: #dc3545;
+        }
+
+        /* Modal for Editing */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 8px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: #000;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        #update-button {
+            background-color: #007bff;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>অফিসারবৃন্দেরডাটাবেস</h1>
+        <p style="text-align: center; color: red;">আপনার Node.js সার্ভার **http://localhost:3000** পোর্টে চালু থাকতে
+            হবে।</p>
+
+        <h2>নতুন অফিসার যুক্ত করুন</h2>
+        <form id="doctor-form">
+            <label for="name">নাম:</label>
+            <input type="text" id="name" required><br>
+
+            <label for="designation">পদবি/উপাধি:</label>
+            <input type="text" id="designation" required><br>
+
+            <label for="city">শহর:</label>
+            <input type="text" id="city" required><br>
+
+            <label for="salary">বেতন:</label>
+            <input type="number" id="salary" required><br>
+
+            <button type="submit" id="save-button">নতুন অফিসার সেভ করুন</button>
+        </form>
+
+        <hr>
+
+        <h2>বর্তমান অফিসার তালিকা</h2>
+        <div id="doctors-list">
+            <table>
+                <thead>
+                    <tr>
+                        <th>নাম</th>
+                        <th>পদবি</th>
+                        <th>শহর</th>
+                        <th>বেতন</th>
+                        <th>অ্যাকশন</th>
+                    </tr>
+                </thead>
+                <tbody id="doctors-table-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>অ তথ্য এডিট করুন</h2>
+            <form id="edit-form">
+                <input type="hidden" id="edit-id">
+
+                <label for="edit-name">নাম:</label>
+                <input type="text" id="edit-name" required><br>
+
+                <label for="edit-designation">পদবি/উপাধি:</label>
+                <input type="text" id="edit-designation" required><br>
+
+                <label for="edit-city">শহর:</label>
+                <input type="text" id="edit-city" required><br>
+
+                <label for="edit-salary">বেতন:</label>
+                <input type="number" id="edit-salary" required><br>
+
+                <button type="submit" id="update-button">আপডেট সেভ করুন</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3000';
+
+        // ডাটাবেস থেকে সব ডাটা এনে টেবিলে দেখানোর ফাংশন
+        async function fetchDoctors() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/all-doctors`);
+                const doctors = await response.json();
+
+                const tbody = document.getElementById('doctors-table-body');
+                tbody.innerHTML = ''; // টেবিল খালি করা
+
+                doctors.forEach(doctor => {
+                    const row = tbody.insertRow();
+                    row.insertCell().textContent = doctor.name;
+                    row.insertCell().textContent = doctor.designation;
+                    row.insertCell().textContent = doctor.city;
+                    row.insertCell().textContent = doctor.salary;
+
+                    const actionCell = row.insertCell();
+
+                    // এডিট বাটন
+                    const editBtn = document.createElement('button');
+                    editBtn.textContent = 'এডিট';
+                    editBtn.className = 'edit-btn';
+                    editBtn.onclick = () => openEditModal(doctor);
+                    actionCell.appendChild(editBtn);
+
+                    // ডিলিট বাটন
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = 'ডিলিট';
+                    deleteBtn.className = 'delete-btn';
+                    deleteBtn.onclick = () => deleteDoctor(doctor._id, doctor.name);
+                    actionCell.appendChild(deleteBtn);
+                });
+
+            } catch (error) {
+                console.error('ডাটা লোড করতে ব্যর্থ:', error);
+                alert('ডাটা লোড করতে সমস্যা হয়েছে। সার্ভার চালু আছে কিনা দেখুন।');
+            }
+        }
+
+        // ফর্ম সাবমিট হ্যান্ডেল করা (নতুন ডাটা সেভ)
+        document.getElementById('doctor-form').addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            const newDoctor = {
+                name: document.getElementById('name').value,
+                designation: document.getElementById('designation').value,
+                city: document.getElementById('city').value,
+                salary: parseFloat(document.getElementById('salary').value) // সংখ্যায় কনভার্ট করা
+            };
+
+            // ফ্রন্টএন্ডে ডেটা দেখানোর জন্য
+            console.log("ফ্রন্টএন্ড থেকে পাঠানো ডেটা:", newDoctor);
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/add-doctor`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(newDoctor)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert('✅ সফল: ' + data.message);
+                    this.reset(); // ফর্ম রিসেট করা
+                    fetchDoctors(); // তালিকা আপডেট করা
+                } else {
+                    // সার্ভার থেকে আসা পরিষ্কার এরর মেসেজ দেখানো
+                    alert(`❌ সেভ করতে ব্যর্থ: ${data.details || data.message}`);
+                }
+
+            } catch (error) {
+                console.error('সেভ করতে সমস্যা:', error);
+                alert('নেটওয়ার্ক সমস্যা বা সার্ভার ত্রুটি।');
+            }
+        });
+
+
+        // ডিলিট ফাংশন
+        async function deleteDoctor(id, name) {
+            if (!confirm(`আপনি কি নিশ্চিত যে ${name} কে ডিলিট করতে চান?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/delete-doctor/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert('🗑️ সফল: ' + data.message);
+                    fetchDoctors(); // তালিকা আপডেট করা
+                } else {
+                    alert(`❌ ডিলিট করতে ব্যর্থ: ${data.message}`);
+                }
+
+            } catch (error) {
+                console.error('ডিলিট করতে সমস্যা:', error);
+                alert('নেটওয়ার্ক সমস্যা বা সার্ভার ত্রুটি।');
+            }
+        }
+
+        // এডিট মডাল খোলা এবং ডেটা লোড করা
+        const editModal = document.getElementById('edit-modal');
+        const closeModal = document.querySelector('.close');
+
+        closeModal.onclick = () => editModal.style.display = "none";
+        window.onclick = (event) => {
+            if (event.target == editModal) {
+                editModal.style.display = "none";
+            }
+        };
+
+        function openEditModal(doctor) {
+            document.getElementById('edit-id').value = doctor._id;
+            document.getElementById('edit-name').value = doctor.name;
+            document.getElementById('edit-designation').value = doctor.designation;
+            document.getElementById('edit-city').value = doctor.city;
+            document.getElementById('edit-salary').value = doctor.salary;
+            editModal.style.display = "block";
+        }
+
+
+        // এডিট ফর্ম সাবমিট হ্যান্ডেল করা (ডাটা আপডেট)
+        document.getElementById('edit-form').addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            const id = document.getElementById('edit-id').value;
+            const updatedDoctor = {
+                name: document.getElementById('edit-name').value,
+                designation: document.getElementById('edit-designation').value,
+                city: document.getElementById('edit-city').value,
+                salary: parseFloat(document.getElementById('edit-salary').value)
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/update-doctor/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedDoctor)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert('✅ সফল: ' + data.message);
+                    editModal.style.display = "none"; // মডাল বন্ধ করা
+                    fetchDoctors(); // তালিকা আপডেট করা
+                } else {
+                    alert(`❌ আপডেট করতে ব্যর্থ: ${data.details || data.message}`);
+                }
+
+            } catch (error) {
+                console.error('আপডেট করতে সমস্যা:', error);
+                alert('নেটওয়ার্ক সমস্যা বা সার্ভার ত্রুটি।');
+            }
+        });
+
+
+        // পেজ লোড হওয়ার সাথে সাথে ডাটা লোড করা
+        document.addEventListener('DOMContentLoaded', fetchDoctors);
+    </script>
+</body>
+
+</html>
+🎯 চূড়ান্ত ধাপ:
